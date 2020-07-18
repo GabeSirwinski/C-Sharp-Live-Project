@@ -1,0 +1,98 @@
+PhotoController.cs:
+
+ [AllowAnonymous]
+        public static byte[] ImageBytes(HttpPostedFileBase file)
+        {
+            //Convert the file into a System.Drawing.Image type
+            Image image = Image.FromStream(file.InputStream, true, true);
+            //Convert that image into a Byte Array to facilitate storing the image in a database
+            var converter = new ImageConverter();
+            byte[] imageBytes = (byte[])converter.ConvertTo(image, typeof(byte[]));
+            //return Byte Array
+            return imageBytes;
+        }
+
+ [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Create([Bind(Include = "PhotoId,PhotoFile,OriginalHeight,OriginalWidth,Title")] Photo photo, HttpPostedFileBase file)
+        {
+            byte[] photoArray = ImageBytes(file);
+            if (db.Photo.Where(x => x.PhotoFile == photoArray).ToList().Any())
+            {
+                var id = db.Photo.Where(x => x.PhotoFile == photoArray).ToList().FirstOrDefault().PhotoId;
+                ModelState.AddModelError("PhotoFile", "This photo already exists in the database. Would you like to <a href='/Photo/Details/" + id + "'>view</a> or <a href='/Photo/Edit/" + id + "'>edit</a> the photo?");
+            }
+            if (ModelState.IsValid)
+            {
+                photo.PhotoFile = photoArray;
+                Bitmap img = new Bitmap(file.InputStream);
+                photo.OriginalHeight = img.Height;
+                photo.OriginalWidth = img.Width;
+
+                db.Photo.Add(photo);
+                db.SaveChanges();
+
+                return RedirectToAction("Index");
+            }
+
+            return View(photo);
+        }
+
+[HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Edit([Bind(Include = "PhotoId,PhotoFile,OriginalHeight,OriginalWidth,Title")] Photo photo, HttpPostedFileBase file)
+        {
+            var currentphoto = db.Photo.Find(photo.PhotoId);
+            byte[] photoArray = ImageBytes(file);
+            if (db.Photo.Where(x => x.PhotoFile == photoArray).ToList().Any())
+            {
+                var id = db.Photo.Where(x => x.PhotoFile == photoArray).ToList().FirstOrDefault().PhotoId;
+                ModelState.AddModelError("PhotoFile", "This photo already exists in the database. Would you like to <a href='/Photo/Details/" + id + "'>view</a> the photo?");
+            }
+            if (ModelState.IsValid)
+            {
+                if (file != null)
+                {
+                    
+                    currentphoto.PhotoFile = photoArray;
+                    Bitmap img = new Bitmap(file.InputStream);
+                    currentphoto.OriginalHeight = img.Height;
+                    currentphoto.OriginalWidth = img.Width;
+                    currentphoto.Title = photo.Title;
+                    db.Entry(currentphoto).State = EntityState.Modified;
+                    db.SaveChanges();
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    currentphoto.Title = photo.Title;
+                    db.Entry(currentphoto).State = EntityState.Modified;
+                    db.SaveChanges();
+                    return RedirectToAction("Index");
+                }
+            
+            }
+
+            return View(photo);
+        }
+
+
+Edit.cshtml:
+
+ <div class="form-group">
+                    @Html.LabelFor(model => model.PhotoFile, htmlAttributes: new { @class = "control-label col-md-4 inputLabel" })
+                    <div class="col-md-10 formBox">
+                        @Html.TextBoxFor(model => model.PhotoFile, new { type = "file", Name = "file", Id = "PhotoFile", Class = "fileSelect" })
+                        @Html.Raw(HttpUtility.HtmlDecode(Html.ValidationMessageFor(model => model.PhotoFile, "", new { @class = "text-white" }).ToHtmlString()))
+                    </div>
+                </div>
+
+Create.cshtml:
+
+<div class="form-group">
+                    @Html.LabelFor(model => model.PhotoFile, htmlAttributes: new { @class = "control-label col-md-4 inputLabel" })
+                    <div class="col-md-10 formBox">
+                        @Html.TextBoxFor(model => model.PhotoFile, new { type = "file", Name = "file", Id = "PhotoFile", Class = "fileSelect" })
+                        @Html.Raw(HttpUtility.HtmlDecode(Html.ValidationMessageFor(model => model.PhotoFile, "", new { @class = "text-white" }).ToHtmlString()))
+                    </div>
+                </div>

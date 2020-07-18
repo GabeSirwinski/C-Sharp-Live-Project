@@ -1,0 +1,100 @@
+RentalRequest.cs:
+
+ [Required(ErrorMessage = "Please provide a valid phone number")]
+        [Display(Name = "Contact Phone Number")]
+        [DataType(DataType.PhoneNumber)]
+        [RegularExpression(@"^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$", ErrorMessage = "Not a valid phone number")]
+        public string ContactPhoneNumber { get; set; }
+
+        [Display(Name = "Contact Email address")]
+        [Required(ErrorMessage = "Please provide a valid email address")]
+        [EmailAddress(ErrorMessage = "Invalid Email Address")]
+        public string ContactEmail { get; set; }
+
+RentalRequestController.cs:
+
+ [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public ActionResult Edit([Bind(Include = "RentalRequestId,ContactPerson,ContactPhoneNumber,ContactEmail,Company,StartTime,EndTime,ProjectInfo,Requests,Accepted,ContractSigned")] RentalRequest rentalRequest)
+        {
+            long sec = 10000000;        //DateTime ticks per second
+            long hrSecs = 3600;         //Seconds in an hour
+            long Strtm = Convert.ToInt64(rentalRequest.StartTime.Ticks) / sec;    //divided ticks into seconds
+            long Endtm = Convert.ToInt64(rentalRequest.EndTime.Ticks) / sec;
+            if (Endtm < (Strtm + hrSecs) && Endtm >= Strtm)    //Doesn't allow rentals < 1hr
+            {
+                ModelState.AddModelError("EndTime", "** Rental must be at least 1 hour.  **");
+            }
+            if (Endtm < Strtm)   //Keeps End time after start time
+            {
+                ModelState.AddModelError("StartTime", "** Start Time cannot occur after End Time.  **");
+            }
+            if (ModelState.IsValid)
+            {
+
+                var currentRentalRequest = db.RentalRequests.Find(rentalRequest.RentalRequestId);
+
+                currentRentalRequest.ContactPerson = rentalRequest.ContactPerson;
+                currentRentalRequest.ContactPhoneNumber = rentalRequest.ContactPhoneNumber;
+                currentRentalRequest.ContactEmail = rentalRequest.ContactEmail;
+                currentRentalRequest.Company = rentalRequest.Company;
+                currentRentalRequest.StartTime = rentalRequest.StartTime;
+                currentRentalRequest.EndTime = rentalRequest.EndTime;
+                currentRentalRequest.ProjectInfo = rentalRequest.ProjectInfo;
+                currentRentalRequest.Requests = rentalRequest.Requests;
+                currentRentalRequest.Accepted = rentalRequest.Accepted;
+                currentRentalRequest.ContractSigned = rentalRequest.ContractSigned;
+
+                db.Entry(currentRentalRequest).State = EntityState.Modified;
+                db.SaveChanges();
+
+                if (rentalRequest.Accepted == true)
+                {
+                    RentalEditCalendar(rentalRequest);
+                }
+                else if (rentalRequest.Accepted == false)
+                {
+                    RentalDeleteCalendar(rentalRequest);
+                }
+                return RedirectToAction("Index");
+            }
+            return View(rentalRequest);
+        }
+
+Create.cshtml:
+
+ <div class="form-group">
+                    @Html.LabelFor(model => model.ContactPhoneNumber, htmlAttributes: new { @class = "control-label col-md-4 inputLabel" })
+                    <div class="col-md-10 formBox">
+                        @Html.EditorFor(model => model.ContactPhoneNumber, new { htmlAttributes = new { @class = "form-control" } })
+                        @Html.ValidationMessageFor(model => model.ContactPhoneNumber, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    @Html.LabelFor(model => model.ContactEmail, htmlAttributes: new { @class = "control-label col-md-4 inputLabel" })
+                    <div class="col-md-10 formBox">
+                        @Html.EditorFor(model => model.ContactEmail, new { htmlAttributes = new { @class = "form-control" } })
+                        @Html.ValidationMessageFor(model => model.ContactEmail, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+
+
+Edit.cshtml:
+
+ <div class="form-group">
+                    @Html.LabelFor(model => model.ContactPhoneNumber, htmlAttributes: new { @class = "control-label col-md-4 inputLabel" })
+                    <div class="col-md-10 formBox">
+                        @Html.EditorFor(model => model.ContactPhoneNumber, new { htmlAttributes = new { @class = "form-control" } })
+                        @Html.ValidationMessageFor(model => model.ContactPhoneNumber, "", new { @class = "text-white" })
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    @Html.LabelFor(model => model.ContactEmail, htmlAttributes: new { @class = "control-label col-md-4 inputLabel" })
+                    <div class="col-md-10 formBox">
+                        @Html.EditorFor(model => model.ContactEmail, new { htmlAttributes = new { @class = "form-control" } })
+                        @Html.ValidationMessageFor(model => model.ContactEmail, "", new { @class = "text-white" })
+                    </div>
+                </div>

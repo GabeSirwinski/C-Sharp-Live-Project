@@ -1,0 +1,18 @@
+About.cshtml:
+ 
+@foreach (CastMember cm in ViewBag.CastMembers)
+                    {
+                        <a style="color: var(--light-color);" href="/CastMembers/Details/@cm.CastMemberID">@cm.Name</a><br />
+                    }
+
+HomeController.cs:
+
+ public ActionResult About()
+        {
+            var castMembers = from p in db.CastMembers
+                              select p;
+
+            ViewBag.CastMembers = castMembers.ToList();
+
+            return View();
+        }
